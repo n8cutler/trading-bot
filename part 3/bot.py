@@ -1,71 +1,69 @@
-import sys, getopt
+import argparse
 import time
-import pprint
+import urllib2
 
 from botchart import BotChart
 from botstrategy import BotStrategy
-from botlog import BotLog
 from botcandlestick import BotCandlestick
 
-def main(argv):
+REFRESH_SEC = 10
+PERIODS = [300, 900, 1800, 7200, 14400, 86400]
+CURRENCY_PAIRS = ["BTC_XMR", "BTC_USDT"]
 
-	startTime = False
-	endTime = False
 
-	try:
-		opts, args = getopt.getopt(argv,"hp:c:n:s:e:",["period=","currency=","points="])
-	except getopt.GetoptError:
-		print 'trading-bot.py -p <period length> -c <currency pair> -n <period of moving average>'
-		sys.exit(2)
+class Bot:
+    def __init__(self):
+        self.options = self.get_options()
 
-	for opt, arg in opts:
-		if opt == '-h':
-			print 'trading-bot.py -p <period length> -c <currency pair> -n <period of moving average>'
-			sys.exit()
-		elif opt in ("-p", "--period"):
-			if (int(arg) in [300,900,1800,7200,14400,86400]):
-				period = arg
-			else:
-				print 'Poloniex requires periods in 300,900,1800,7200,14400, or 86400 second increments'
-				sys.exit(2)
-		elif opt in ("-c", "--currency"):
-			pair = arg
-		elif opt in ("-n", "--points"):
-			lengthOfMA = int(arg)
-		elif opt in ("-s"):
-			startTime = arg
-		elif opt in ("-e"):
-			endTime = arg
+    @staticmethod
+    def get_options():
+        parser = argparse.ArgumentParser(description='Process some integers.')
+        parser.add_argument('-p', '--period', metavar='period', type=int, choices=PERIODS, default=PERIODS[0],
+                            help='The moving average period in seconds to use')
+        parser.add_argument('-c', '--currency_pair', metavar='currency_pair', choices=CURRENCY_PAIRS,
+                            default=CURRENCY_PAIRS[0], help='The currency pair to use')
+        parser.add_argument('-n', '--num_points', metavar='num_points', type=int, help='The number of points to use')
+        parser.add_argument('-s', '--start_time', metavar='start_time', help='The time to start from')
+        parser.add_argument('-e', '--end_time', metavar='end_time', help='The time to end at')
 
-	if (startTime):
-		chart = BotChart("poloniex","BTC_XMR",300)
+        return parser.parse_args()
 
-		strategy = BotStrategy()
+    def run(self):
+        if self.options.start_time:
+            chart = BotChart("poloniex", self.options.currency_pair, self.options.period)
 
-		for candlestick in chart.getPoints():
-			strategy.tick(candlestick)
+            strategy = BotStrategy()
 
-	else:
-		chart = BotChart("poloniex","BTC_XMR",300,False)
-		
-		strategy = BotStrategy()
+            for candlestick in chart.get_points():
+                strategy.tick(candlestick)
 
-		candlesticks = []
-		developingCandlestick = BotCandlestick()
+        else:
+            chart = BotChart("poloniex", self.options.currency_pair, self.options.period, back_test=False)
 
-		while True:
-			try:
-				developingCandlestick.tick(chart.getCurrentPrice())
-			except urllib2.URLError:
-				time.sleep(int(30))
-				developingCandlestick.tick(chart.getCurrentPrice())
+            strategy = BotStrategy()
 
-			if (developingCandlestick.isClosed()):
-				candlesticks.append(developingCandlestick)
-				strategy.tick(developingCandlestick)
-				developingCandlestick = BotCandlestick()
-		
-			time.sleep(int(30))
+            candlesticks = []
+            developing_candlestick = BotCandlestick()
+
+            while True:
+                try:
+                    developing_candlestick.tick(chart.get_current_price())
+                except urllib2.URLError:
+                    time.sleep(REFRESH_SEC)
+                    developing_candlestick.tick(chart.get_current_price())
+
+                if developing_candlestick.is_closed():
+                    candlesticks.append(developing_candlestick)
+                    strategy.tick(developing_candlestick)
+                    developing_candlestick = BotCandlestick()
+
+                time.sleep(REFRESH_SEC)
+
+
+def main():
+    bot = Bot()
+    bot.run()
+
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+    main()

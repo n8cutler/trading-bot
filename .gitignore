@@ -1,0 +1,5 @@
+.idea/
+part 3/__pycache__/
+venv/
+*.pyc
+output.html

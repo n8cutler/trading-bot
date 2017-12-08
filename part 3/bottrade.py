@@ -1,37 +1,37 @@
 from botlog import BotLog
 
+
 class BotTrade(object):
-	def __init__(self,currentPrice,stopLoss=0):
-		self.output = BotLog()
-		self.status = "OPEN"
-		self.entryPrice = currentPrice
-		self.exitPrice = ""
-		self.output.log("Trade opened")
-		if (stopLoss):
-			self.stopLoss = currentPrice - stopLoss
-	
-	def close(self,currentPrice):
-		self.status = "CLOSED"
-		self.exitPrice = currentPrice
-		self.output.log("Trade closed")
+    def __init__(self, current_price, stop_loss=0):
+        self.output = BotLog()
+        self.status = "OPEN"
+        self.entryPrice = current_price
+        self.exitPrice = None
+        self.output.log("Trade opened")
+        if stop_loss:
+            self.stop_loss = current_price - stop_loss
 
-	def tick(self, currentPrice):
-		if (self.stopLoss):
-			if (currentPrice < self.stopLoss):
-				self.close(currentPrice)
+    def close(self, current_price):
+        self.status = "CLOSED"
+        self.exitPrice = current_price
+        self.output.log("Trade closed")
 
+    def tick(self, current_price):
+        if self.stop_loss:
+            if current_price < self.stop_loss:
+                self.close(current_price)
 
-	def showTrade(self):
-		tradeStatus = "Entry Price: "+str(self.entryPrice)+" Status: "+str(self.status)+" Exit Price: "+str(self.exitPrice)
+    def show_trade(self):
+        trade_status = "Entry Price: " + str(self.entryPrice) + " Status: " + str(self.status) + " Exit Price: " + str(
+            self.exitPrice)
 
-		if (self.status == "CLOSED"):
-			tradeStatus = tradeStatus + " Profit: "
-			if (self.exitPrice > self.entryPrice):
-				tradeStatus = tradeStatus + "\033[92m"
-			else:
-				tradeStatus = tradeStatus + "\033[91m"
+        if self.status == "CLOSED":
+            trade_status = trade_status + " Profit: "
+            if self.exitPrice > self.entryPrice:
+                trade_status = trade_status + "\033[92m"
+            else:
+                trade_status = trade_status + "\033[91m"
+            price_change = self.exitPrice - self.entryPrice
+            trade_status = trade_status + str(price_change) + "\033[0m"
 
-			tradeStatus = tradeStatus+str(self.exitPrice - self.entryPrice)+"\033[0m"
-
-		self.output.log(tradeStatus)
-	
+        self.output.log(trade_status)
